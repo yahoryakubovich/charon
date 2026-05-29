@@ -1,0 +1,18 @@
+__pycache__/
+.venv/
+dist/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.pyc
+.env
+.DS_Store
+*.sqlite
+site/
+
+# CHaron runtime data — contains passwords, never commit
+.charon/
+
+# PyCharm
+.idea/

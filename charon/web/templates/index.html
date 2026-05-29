@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en" x-data="charon()" x-init="init()" :class="{ 'dark': darkMode }">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHaron</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .log-line { font-family: ui-monospace, monospace; font-size: 0.78rem; line-height: 1.6; }
+    .tabular { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 min-h-screen">
+
+<!-- Nav -->
+<nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-5 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-xl font-bold tracking-tight">
+        <span class="text-indigo-600 dark:text-indigo-400">CH</span><span class="text-gray-800 dark:text-gray-100">aron</span>
+      </span>
+      <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-full px-2 py-0.5 font-mono">v{{ version }}</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+        Profile: <span class="font-medium text-gray-700 dark:text-gray-200" x-text="profileName">default</span>
+      </div>
+      <button @click="darkMode = !darkMode"
+              class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400"
+              :title="darkMode ? 'Switch to light mode' : 'Switch to dark mode'">
+        <span x-show="!darkMode" class="text-base">🌙</span>
+        <span x-show="darkMode"  class="text-base">☀️</span>
+      </button>
+      <button @click="openConfig()"
+              class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="max-w-7xl mx-auto px-5 py-7 space-y-7">
+
+  <!-- Setup banner — shown when no profile is configured -->
+  <div x-show="!configured" x-cloak
+       class="bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+      <div>
+        <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-200">No connections configured</p>
+        <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">Add your source and target ClickHouse instances to get started.</p>
+      </div>
+    </div>
+    <button @click="openConfig()"
+            class="shrink-0 text-sm px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors">
+      Configure now
+    </button>
+  </div>
+
+  <!-- Connections -->
+  <section>
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Connections</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Source and target ClickHouse instances</p>
+      </div>
+      <button @click="loadStatus()"
+              class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 transition-colors font-medium">
+        <svg class="w-3.5 h-3.5" :class="statusLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        <span x-text="statusLoading ? 'Checking…' : 'Refresh'">Refresh</span>
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Source -->
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full"
+                 :class="status.src ? (status.src.reachable ? 'bg-emerald-500' : 'bg-red-500') : 'bg-gray-300 animate-pulse'"></div>
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Source</span>
+          </div>
+          <span x-show="status.src"
+                class="text-xs font-medium px-2 py-0.5 rounded-full"
+                :class="status.src?.reachable
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                  : 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400'"
+                x-text="status.src?.reachable ? 'Online' : 'Unreachable'"></span>
+        </div>
+        <template x-if="status.src">
+          <dl class="space-y-2 text-sm">
+            <div class="flex justify-between items-baseline">
+              <dt class="text-gray-400 text-xs uppercase tracking-wide">Host</dt>
+              <dd class="font-mono text-xs text-gray-600 dark:text-gray-300 truncate max-w-[200px]" x-text="status.src.host"></dd>
+            </div>
+            <div class="flex justify-between items-baseline">
+              <dt class="text-gray-400 text-xs uppercase tracking-wide">Database</dt>
+              <dd class="text-gray-700 dark:text-gray-200 font-medium" x-text="status.src.database"></dd>
+            </div>
+            <div class="border-t border-gray-100 dark:border-gray-800 pt-3 mt-2 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div class="text-lg font-bold tabular" x-text="status.src.tables"></div>
+                <div class="text-xs text-gray-400">tables</div>
+              </div>
+              <div>
+                <div class="text-lg font-bold tabular" x-text="humanRows(status.src.total_rows)"></div>
+                <div class="text-xs text-gray-400">rows</div>
+              </div>
+              <div>
+                <div class="text-lg font-bold tabular" x-text="humanBytes(status.src.total_bytes)"></div>
+                <div class="text-xs text-gray-400">size</div>
+              </div>
+            </div>
+          </dl>
+        </template>
+        <template x-if="!status.src">
+          <div class="space-y-2 mt-2">
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded animate-pulse w-3/4"></div>
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded animate-pulse w-1/2"></div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Target -->
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full"
+                 :class="status.dst ? (status.dst.reachable ? 'bg-emerald-500' : 'bg-red-500') : 'bg-gray-300 animate-pulse'"></div>
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Target</span>
+          </div>
+          <span x-show="status.dst"
+                class="text-xs font-medium px-2 py-0.5 rounded-full"
+                :class="status.dst?.reachable
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                  : 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400'"
+                x-text="status.dst?.reachable ? 'Online' : 'Unreachable'"></span>
+        </div>
+        <template x-if="status.dst">
+          <dl class="space-y-2 text-sm">
+            <div class="flex justify-between items-baseline">
+              <dt class="text-gray-400 text-xs uppercase tracking-wide">Host</dt>
+              <dd class="font-mono text-xs text-gray-600 dark:text-gray-300 truncate max-w-[200px]" x-text="status.dst.host"></dd>
+            </div>
+            <div class="flex justify-between items-baseline">
+              <dt class="text-gray-400 text-xs uppercase tracking-wide">Database</dt>
+              <dd class="text-gray-700 dark:text-gray-200 font-medium" x-text="status.dst.database"></dd>
+            </div>
+            <div class="border-t border-gray-100 dark:border-gray-800 pt-3 mt-2 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div class="text-lg font-bold tabular" x-text="status.dst.tables"></div>
+                <div class="text-xs text-gray-400">tables</div>
+              </div>
+              <div>
+                <div class="text-lg font-bold tabular" x-text="humanRows(status.dst.total_rows)"></div>
+                <div class="text-xs text-gray-400">rows</div>
+              </div>
+              <div>
+                <div class="text-lg font-bold tabular" x-text="humanBytes(status.dst.total_bytes)"></div>
+                <div class="text-xs text-gray-400">size</div>
+              </div>
+            </div>
+          </dl>
+        </template>
+        <template x-if="!status.dst">
+          <div class="space-y-2 mt-2">
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded animate-pulse w-3/4"></div>
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded animate-pulse w-1/2"></div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tables -->
+  <section>
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Tables</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Row counts compared between source and target</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button @click="loadTables()"
+                class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300">
+          <svg class="w-3.5 h-3.5" :class="tablesLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh
+        </button>
+        <button @click="copySelected()" x-show="selectedTables.length > 0" x-cloak
+                class="text-sm px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors font-medium">
+          Copy <span x-text="selectedTables.length"></span> selected
+        </button>
+        <button @click="copyAll()"
+                class="text-sm px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors font-medium">
+          Copy all
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800">
+            <tr>
+              <th class="w-10 px-4 py-3">
+                <input type="checkbox" @change="toggleAll($event)" class="rounded border-gray-300 dark:border-gray-600" />
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Table</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Engine</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Source</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Target</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Diff</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
+              <th class="px-4 py-3 w-16"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            <template x-if="tablesLoading">
+              <tr><td colspan="8" class="text-center py-12">
+                <div class="flex flex-col items-center gap-2 text-gray-400">
+                  <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  <span class="text-sm">Loading tables…</span>
+                </div>
+              </td></tr>
+            </template>
+            <template x-if="!tablesLoading && tables.length === 0">
+              <tr><td colspan="8" class="text-center py-12">
+                <div class="flex flex-col items-center gap-2 text-gray-400">
+                  <svg class="w-8 h-8 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>
+                  <span class="text-sm">No tables found. Configure your connections first.</span>
+                </div>
+              </td></tr>
+            </template>
+            <template x-for="row in tables" :key="row.name">
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                <td class="px-4 py-2.5">
+                  <input type="checkbox" :value="row.name" x-model="selectedTables" class="rounded border-gray-300 dark:border-gray-600" />
+                </td>
+                <td class="px-4 py-2.5 font-mono text-xs text-gray-700 dark:text-gray-300" x-text="row.name"></td>
+                <td class="px-4 py-2.5">
+                  <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded font-mono" x-text="row.engine"></span>
+                </td>
+                <td class="px-4 py-2.5 text-right tabular text-sm text-gray-700 dark:text-gray-300" x-text="row.src_rows.toLocaleString()"></td>
+                <td class="px-4 py-2.5 text-right tabular text-sm"
+                    :class="row.dst_rows === null ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'"
+                    x-text="row.dst_rows !== null ? row.dst_rows.toLocaleString() : '—'"></td>
+                <td class="px-4 py-2.5 text-right tabular text-sm font-medium"
+                    :class="row.diff_rows > 0 ? 'text-amber-600 dark:text-amber-400' : row.diff_rows < 0 ? 'text-red-500' : 'text-gray-400'"
+                    x-text="row.diff_rows === 0 ? '—' : (row.diff_rows > 0 ? '+' : '') + row.diff_rows.toLocaleString()"></td>
+                <td class="px-4 py-2.5 text-center">
+                  <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="{
+                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400': row.status === 'ok',
+                    'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400': row.status === 'mismatch',
+                    'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400': row.status === 'missing'
+                  }" x-text="row.status === 'ok' ? 'In sync' : row.status === 'mismatch' ? 'Out of sync' : 'Not copied'"></span>
+                </td>
+                <td class="px-4 py-2.5">
+                  <button @click="_startCopy(row.name)" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium">Copy</button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Active Job -->
+  <section x-show="activeJob" x-cloak>
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Transfer in progress</h2>
+        <p class="text-xs text-gray-400 mt-0.5 font-mono" x-text="activeJob?.id?.slice(0, 8) + '…'"></p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-medium px-2.5 py-1 rounded-full" :class="{
+          'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400': activeJob?.status === 'running',
+          'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400': activeJob?.status === 'done',
+          'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400': activeJob?.status === 'error',
+          'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400': activeJob?.status === 'queued'
+        }" x-text="{running:'Running',done:'Completed',error:'Failed',queued:'Queued'}[activeJob?.status] ?? activeJob?.status"></span>
+        <button @click="activeJob = null; jobLogs = []" class="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">Dismiss</button>
+      </div>
+    </div>
+    <div class="bg-gray-950 rounded-xl p-4 max-h-64 overflow-y-auto border border-gray-800" id="log-container">
+      <template x-for="(line, idx) in jobLogs" :key="idx">
+        <div class="log-line" :class="{
+          'text-red-400': line.startsWith('ERROR'),
+          'text-amber-400': line.startsWith('SKIP'),
+          'text-emerald-400': line.startsWith('DONE'),
+          'text-gray-300': !line.startsWith('ERROR') && !line.startsWith('SKIP') && !line.startsWith('DONE')
+        }" x-text="line"></div>
+      </template>
+      <template x-if="jobLogs.length === 0">
+        <div class="log-line text-gray-600">Waiting for output…</div>
+      </template>
+    </div>
+  </section>
+
+  <!-- Transfer History -->
+  <section>
+    <details class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 group">
+      <summary class="px-5 py-4 cursor-pointer select-none flex items-center justify-between">
+        <span class="text-base font-semibold text-gray-900 dark:text-gray-100">Transfer history</span>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-400" x-text="jobs.length ? jobs.length + ' transfers' : 'No transfers yet'"></span>
+          <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+      </summary>
+      <div class="border-t border-gray-100 dark:border-gray-800 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 dark:bg-gray-800/60">
+            <tr>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">ID</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Profile</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Scope</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Result</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Started</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Duration</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            <template x-for="job in jobs" :key="job.id">
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer transition-colors" @click="viewJob(job.id)">
+                <td class="px-4 py-2.5 font-mono text-xs text-gray-400" x-text="job.id.slice(0, 8) + '…'"></td>
+                <td class="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300" x-text="job.profile"></td>
+                <td class="px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400" x-text="job.table ?? 'All tables'"></td>
+                <td class="px-4 py-2.5">
+                  <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="{
+                    'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400': job.status === 'running',
+                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400': job.status === 'done',
+                    'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400': job.status === 'error',
+                    'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400': job.status === 'queued'
+                  }" x-text="{running:'Running',done:'Completed',error:'Failed',queued:'Queued'}[job.status] ?? job.status"></span>
+                </td>
+                <td class="px-4 py-2.5 text-xs text-gray-400 tabular" x-text="job.started_at ? new Date(job.started_at).toLocaleString() : '—'"></td>
+                <td class="px-4 py-2.5 text-xs text-gray-400 tabular" x-text="job.started_at && job.finished_at ? duration(job.started_at, job.finished_at) : job.status === 'running' ? 'Running…' : '—'"></td>
+              </tr>
+            </template>
+            <template x-if="jobs.length === 0">
+              <tr><td colspan="6" class="text-center py-8 text-sm text-gray-400">No transfers yet. Hit "Copy all" to get started.</td></tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+
+</main>
+
+<!-- Settings Modal -->
+<div x-show="showConfig" x-cloak
+     class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+     @click.self="showConfig = false">
+  <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Connection settings</h3>
+      <button @click="showConfig = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form @submit.prevent="saveConfig()" class="px-6 py-5 space-y-5">
+      <!-- Source -->
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+          <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Source</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Host</label>
+            <input x-model="configForm.src_host" type="text" placeholder="http://host:8123" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none placeholder-gray-300 dark:placeholder-gray-600" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Database</label>
+            <input x-model="configForm.src_database" type="text" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">User</label>
+            <input x-model="configForm.src_user" type="text" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Password</label>
+            <input x-model="configForm.src_password" type="password" placeholder="Leave blank to keep" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none placeholder-gray-300 dark:placeholder-gray-600" />
+          </div>
+        </div>
+      </div>
+      <!-- Target -->
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+          <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Target</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Host</label>
+            <input x-model="configForm.dst_host" type="text" placeholder="http://host:8123" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none placeholder-gray-300 dark:placeholder-gray-600" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Database</label>
+            <input x-model="configForm.dst_database" type="text" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">User</label>
+            <input x-model="configForm.dst_user" type="text" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Password</label>
+            <input x-model="configForm.dst_password" type="password" placeholder="Leave blank to keep" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none placeholder-gray-300 dark:placeholder-gray-600" />
+          </div>
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+              TCP address <span class="font-normal text-gray-400">(host:9000 — used for bulk inserts)</span>
+            </label>
+            <input x-model="configForm.dst_tcp_hostport" type="text" placeholder="host:9000" class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none placeholder-gray-300 dark:placeholder-gray-600" />
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between pt-1">
+        <span x-show="configSaveMsg" class="text-sm" :class="configSaveError ? 'text-red-500' : 'text-emerald-600'" x-text="configSaveMsg"></span>
+        <div class="flex gap-2 ml-auto">
+          <button type="button" @click="showConfig = false" class="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium">Cancel</button>
+          <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors font-medium">Save changes</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function charon() {
+  return {
+    darkMode: localStorage.getItem('charon-dark') === 'true',
+    configured: true,
+    profileName: 'default',
+    status: { src: null, dst: null },
+    statusLoading: false,
+    tables: [],
+    tablesLoading: false,
+    selectedTables: [],
+    jobs: [],
+    activeJob: null,
+    jobLogs: [],
+    showConfig: false,
+    configForm: {},
+    configSaveMsg: '',
+    configSaveError: false,
+    _sseSource: null,
+
+    init() {
+      this.$watch('darkMode', v => localStorage.setItem('charon-dark', v));
+      this.checkConfigured();
+    },
+
+    async checkConfigured() {
+      try {
+        const res = await fetch('/api/configured');
+        const data = await res.json();
+        this.configured = data.configured;
+        if (this.configured) {
+          this.loadStatus();
+          this.loadTables();
+          this.loadJobs();
+        }
+      } catch (e) {
+        console.error('Config check failed', e);
+      }
+    },
+
+    async loadStatus() {
+      this.statusLoading = true;
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        this.status.src = data[0];
+        this.status.dst = data[1];
+      } catch (e) { console.error('Status load failed', e); }
+      finally { this.statusLoading = false; }
+    },
+
+    async loadTables() {
+      this.tablesLoading = true;
+      try {
+        const res = await fetch('/api/tables');
+        this.tables = await res.json();
+      } catch (e) { console.error('Tables load failed', e); }
+      finally { this.tablesLoading = false; }
+    },
+
+    async loadJobs() {
+      try {
+        const res = await fetch('/api/jobs');
+        this.jobs = await res.json();
+      } catch (e) { console.error('Jobs load failed', e); }
+    },
+
+    toggleAll(event) {
+      this.selectedTables = event.target.checked ? this.tables.map(t => t.name) : [];
+    },
+
+    async copyAll() { await this._startCopy(null); },
+
+    async copySelected() {
+      for (const name of this.selectedTables) await this._startCopy(name);
+      this.selectedTables = [];
+    },
+
+    async _startCopy(tableName) {
+      try {
+        const res = await fetch('/api/copy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table: tableName }),
+        });
+        const data = await res.json();
+        this.watchJob(data.job_id);
+        this.loadJobs();
+      } catch (e) { console.error('Copy failed to start', e); }
+    },
+
+    watchJob(jobId) {
+      this.activeJob = { id: jobId, status: 'running' };
+      this.jobLogs = [];
+      if (this._sseSource) this._sseSource.close();
+      const src = new EventSource(`/api/jobs/${jobId}/stream`);
+      this._sseSource = src;
+      src.onmessage = (e) => {
+        this.jobLogs.push(e.data);
+        this.$nextTick(() => {
+          const el = document.getElementById('log-container');
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      };
+      src.addEventListener('done', () => {
+        src.close(); this._sseSource = null;
+        this.fetchJobStatus(jobId);
+        this.loadJobs(); this.loadStatus(); this.loadTables();
+      });
+      src.onerror = () => { src.close(); this._sseSource = null; this.fetchJobStatus(jobId); };
+    },
+
+    async fetchJobStatus(jobId) {
+      try { const res = await fetch(`/api/jobs/${jobId}`); this.activeJob = await res.json(); }
+      catch (e) { console.error('Job status fetch failed', e); }
+    },
+
+    async viewJob(jobId) {
+      try {
+        const res = await fetch(`/api/jobs/${jobId}`);
+        const data = await res.json();
+        this.activeJob = data;
+        this.jobLogs = data.log_lines || [];
+      } catch (e) { console.error('Job view failed', e); }
+    },
+
+    async openConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        this.configForm = {
+          src_host: data.src.host, src_user: data.src.user,
+          src_password: '', src_database: data.src.database,
+          dst_host: data.dst.host, dst_user: data.dst.user,
+          dst_password: '', dst_database: data.dst.database,
+          dst_tcp_hostport: data.dst.tcp_hostport || '',
+        };
+      } catch (e) { console.error('Config load failed', e); }
+      this.configSaveMsg = '';
+      this.showConfig = true;
+    },
+
+    async saveConfig() {
+      this.configSaveMsg = ''; this.configSaveError = false;
+      const payload = { ...this.configForm };
+      if (!payload.src_password) delete payload.src_password;
+      if (!payload.dst_password) delete payload.dst_password;
+      if (!payload.dst_tcp_hostport) delete payload.dst_tcp_hostport;
+      try {
+        const res = await fetch('/api/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          this.configSaveMsg = 'Saved.';
+          setTimeout(() => {
+            this.showConfig = false;
+            this.checkConfigured();
+          }, 800);
+        } else {
+          const err = await res.json();
+          this.configSaveMsg = err.detail || 'Something went wrong.';
+          this.configSaveError = true;
+        }
+      } catch (e) { this.configSaveMsg = 'Could not reach the server.'; this.configSaveError = true; }
+    },
+
+    duration(start, end) {
+      const s = Math.floor((new Date(end) - new Date(start)) / 1000);
+      if (s < 60) return s + 's';
+      const m = Math.floor(s / 60);
+      if (m < 60) return m + 'm ' + (s % 60) + 's';
+      return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+    },
+
+    humanBytes(bytes) {
+      if (!bytes) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let i = 0;
+      while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+      return bytes.toFixed(1) + ' ' + units[i];
+    },
+
+    humanRows(n) {
+      if (!n) return '0';
+      if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+      return n.toString();
+    },
+  };
+}
+</script>
+</body>
+</html>
