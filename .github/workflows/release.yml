@@ -34,7 +34,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: uv run python-semantic-release version
 
-      - name: Python Semantic Release — publish
+      - name: Python Semantic Release — publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: uv run python-semantic-release publish
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
