@@ -1,7 +1,7 @@
 # charon
 
-[![PyPI version](https://img.shields.io/pypi/v/charon.svg)](https://pypi.org/project/charon/)
-[![CI](https://github.com/your-org/charon/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/charon/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/clickhouse-charon.svg)](https://pypi.org/project/clickhouse-charon/)
+[![CI](https://github.com/yahoryakubovich/charon/actions/workflows/ci.yml/badge.svg)](https://github.com/yahoryakubovich/charon/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **charon** is a ClickHouse database copier with a CLI and web dashboard. It copies tables between ClickHouse instances partition-by-partition, shows a live diff, and tracks job history.
