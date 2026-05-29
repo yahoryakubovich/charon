@@ -33,6 +33,7 @@ dev = [
     "mypy>=1.10",
     "types-requests>=2",
     "types-PyYAML>=6",
+    "python-semantic-release>=9",
 ]
 
 [tool.semantic_release]
