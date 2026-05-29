@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "clickhouse-charon"
-version = "0.1.0"
+name = "charon"
+version = "1.0.0"
 description = "CHaron — ClickHouse migration tool with CLI + web dashboard"
 readme = "README.md"
 license = { text = "MIT" }
