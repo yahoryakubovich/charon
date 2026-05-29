@@ -7,7 +7,7 @@ packages = ["charon"]
 
 [project]
 name = "clickhouse-charon"
-version = "1.0.1"
+version = "1.0.2"
 description = "CHaron — ClickHouse migration tool with CLI + web dashboard"
 readme = "README.md"
 license = { text = "MIT" }
