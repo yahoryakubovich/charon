@@ -282,14 +282,29 @@ def create_app(
         cfg = load_config(config_path)
         profile = _load_profile()
 
-        src_data = profile.src.model_dump() if profile else {
-            "host": "http://localhost:8123", "user": "default",
-            "password": "", "database": "default", "timeout": 3600,
-        }
-        dst_data = profile.dst.model_dump() if profile else {
-            "host": "http://localhost:8123", "user": "default",
-            "password": "", "database": "default", "timeout": 3600, "tcp_hostport": None,
-        }
+        src_data = (
+            profile.src.model_dump()
+            if profile
+            else {
+                "host": "http://localhost:8123",
+                "user": "default",
+                "password": "",
+                "database": "default",
+                "timeout": 3600,
+            }
+        )
+        dst_data = (
+            profile.dst.model_dump()
+            if profile
+            else {
+                "host": "http://localhost:8123",
+                "user": "default",
+                "password": "",
+                "database": "default",
+                "timeout": 3600,
+                "tcp_hostport": None,
+            }
+        )
 
         if req.src_host is not None:
             src_data["host"] = req.src_host

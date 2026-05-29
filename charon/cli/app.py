@@ -197,9 +197,7 @@ def web(
 
     fastapi_app = create_app(config_path=state.config_path, profile_name=state.profile_name)
 
-    console.print(
-        f"[bold green]CHaron[/bold green] → [link]http://{host}:{port}[/link]"
-    )
+    console.print(f"[bold green]CHaron[/bold green] → [link]http://{host}:{port}[/link]")
 
     uvicorn.run(
         fastapi_app,
