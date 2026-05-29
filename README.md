@@ -27,10 +27,10 @@
 
 ```bash
 # Using pipx (recommended for end-users)
-pipx install charon
+pipx install clickhouse-charon
 
 # Using uv tool
-uv tool install charon
+uv tool install clickhouse-charon
 ```
 
 ---
