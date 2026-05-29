@@ -37,5 +37,4 @@ jobs:
       - name: Python Semantic Release — publish
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: uv run python-semantic-release publish
