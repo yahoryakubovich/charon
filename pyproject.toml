@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "charon"
-version = "0.1.0"
+version = "1.0.0"
 description = "CHaron — ClickHouse migration tool with CLI + web dashboard"
 readme = "README.md"
 license = { text = "MIT" }
